@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vikings Voyage</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple:      #4F2683;
+    --purple-dk:   #2A1450;
+    --purple-dkr:  #120a22;
+    --purple-lt:   #8a62c4;
+    --gold:        #FFC62F;
+    --gold-soft:   #ffe08a;
+    --gray:        #E6E3EC;
+    --font:        "Figtree", Arial, Helvetica, sans-serif;
+  }
+  body { font-family: var(--font); background: var(--purple-dkr); color: #1e1b2e; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, var(--purple-dk) 0%, var(--purple) 100%); color: #fff; padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--gold); }
+  .header h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -.4px; }
+  .header p { color: var(--gold-soft); font-size: .88rem; margin-top: 3px; }
+  .export-btn { padding: 7px 14px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,.3); background: transparent; color: rgba(255,255,255,.85); font-size: .85rem; cursor: pointer; transition: all .2s; font-family: inherit; }
+  .export-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(255,198,47,.08); }
+
+  /* Tabs */
+  .nav-shell { position: sticky; top: 0; z-index: 100; }
+  .tabs { background: linear-gradient(180deg, #1c0f36 0%, var(--purple-dk) 100%); padding: 0 28px; display: flex; gap: 2px; overflow-x: auto; }
+  .tab-btn { padding: 12px 18px; font-size: .9rem; font-weight: 500; color: rgba(255,255,255,.75); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all .18s; white-space: nowrap; border-radius: 6px 6px 0 0; font-family: inherit; }
+  .tab-btn.active { color: #fff; border-bottom-color: var(--gold); font-weight: 700; background: rgba(255,255,255,.06); }
+  .tab-btn:hover:not(.active) { color: #fff; background: rgba(255,255,255,.05); }
+
+  /* Filter bar */
+  .filter-bar { background: var(--purple-dkr); border-bottom: 1px solid rgba(138,98,196,.2); padding: 8px 28px; display: flex; align-items: center; gap: 12px; overflow-x: auto; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+  .filter-label { font-size: .72rem; font-weight: 700; color: rgba(255,255,255,.65); text-transform: uppercase; letter-spacing: .5px; }
+  .filter-select { padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); font-size: .8rem; color: #fff; background: rgba(255,255,255,.09); outline: none; min-width: 110px; font-family: inherit; }
+  .filter-select option { background: var(--purple-dk); color: #fff; }
+  .filter-reset { padding: 5px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: transparent; font-size: .8rem; color: rgba(255,255,255,.7); cursor: pointer; font-family: inherit; }
+  .filter-reset:hover { border-color: var(--gold); color: var(--gold); }
+  .filter-count { font-size: .8rem; color: rgba(255,255,255,.55); margin-left: auto; white-space: nowrap; }
+  .filter-count strong { color: #fff; }
+
+  /* Panels */
+  .tab-panel { display: none; padding: 24px 32px 32px; }
+  .tab-panel.active { display: block; animation: fadeUp .4s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Cards */
+  .card { background: #fff; border-radius: 14px; padding: 22px; box-shadow: 0 2px 16px rgba(0,0,0,.25); margin-bottom: 18px; border-top: 3px solid var(--gold); }
+  .card h3 { font-size: 1.02rem; font-weight: 700; color: var(--purple-dk); margin-bottom: 4px; }
+  .card-note { font-size: .82rem; color: #6b6785; margin-bottom: 12px; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 800px) { .chart-row { grid-template-columns: 1fr; } .tab-panel { padding: 16px; } }
+
+  /* Stat tiles */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 16px; text-align: center; transition: all .2s; }
+  .stat-card:hover { background: rgba(255,198,47,.08); border-color: rgba(255,198,47,.35); transform: translateY(-2px); }
+  .stat-card .val { font-size: 1.9rem; font-weight: 800; color: #fff; line-height: 1; }
+  .stat-card .lbl { font-size: .76rem; color: var(--gold); margin-top: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* Table */
+  .table-search { padding: 8px 13px; border-radius: 8px; border: 1.5px solid #d9d4e6; font-size: .9rem; width: 280px; outline: none; font-family: inherit; }
+  .table-search:focus { border-color: var(--purple); }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .data-table th { text-align: left; padding: 10px 13px; background: #f6f3fb; color: var(--purple-dk); font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .4px; border-bottom: 2px solid var(--gold); cursor: pointer; white-space: nowrap; user-select: none; }
+  .data-table th:hover { color: var(--purple-lt); }
+  .data-table td { padding: 10px 13px; border-bottom: 1px solid #efecf6; }
+  .data-table tr:hover td { background: #faf8fd; cursor: pointer; }
+
+  /* Empty states */
+  .empty { text-align: center; padding: 48px 24px; color: #8a86a0; }
+  .empty svg { opacity: .5; margin-bottom: 10px; }
+  .empty p { font-size: .92rem; }
+  .empty strong { color: var(--purple); }
+
+  /* Profile */
+  .profile-select { padding: 10px 14px; border-radius: 8px; border: 1.5px solid #d9d4e6; font-size: .95rem; min-width: 320px; background: #fff; font-family: inherit; margin-bottom: 20px; }
+  .profile-hero { background: linear-gradient(135deg, var(--purple-dk), var(--purple)); color: #fff; padding: 28px 32px; border-radius: 14px 14px 0 0; border-bottom: 3px solid var(--gold); }
+  .profile-hero h2 { font-size: 1.6rem; font-weight: 800; }
+  .profile-body { background: #fff; padding: 24px 32px; border-radius: 0 0 14px 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .fact { background: #f6f3fb; border-radius: 10px; padding: 14px 16px; }
+  .fact .k { font-size: .72rem; font-weight: 700; color: #6b6785; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .fact .v { font-size: 1rem; color: var(--purple-dk); font-weight: 500; }
+
+  /* Home */
+  #tab-home { background: linear-gradient(135deg, #0d0719 0%, #1c0f36 50%, var(--purple-dk) 100%); min-height: calc(100vh - 110px); text-align: center; padding-top: 70px; }
+  .home-badge { display: inline-block; background: rgba(255,198,47,.14); border: 1px solid rgba(255,198,47,.45); color: var(--gold); font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 22px; }
+  .home-title { font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 800; color: #fff; line-height: 1.1; margin-bottom: 16px; }
+  .home-title span { background: linear-gradient(90deg, var(--gold), var(--gold-soft), var(--purple-lt)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .home-sub { font-size: 1.15rem; color: #b6adcc; max-width: 560px; margin: 0 auto 40px; line-height: 1.6; }
+  .home-cta { background: linear-gradient(135deg, var(--gold), #e9a800); color: var(--purple-dk); border: none; padding: 14px 36px; border-radius: 30px; font-size: .95rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 20px rgba(255,198,47,.35); font-family: inherit; transition: transform .2s; }
+  .home-cta:hover { transform: translateY(-2px); }
+  .home-stats { max-width: 900px; margin: 0 auto 40px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Vikings Voyage</h1>
+    <p>DRAFT &mdash; data coming soon</p>
+  </div>
+  <button class="export-btn" id="exportBtn">Export filtered CSV</button>
+</div>
+
+<div class="nav-shell">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="home">Home</button>
+    <button class="tab-btn" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="directory">Directory</button>
+    <button class="tab-btn" data-tab="charts">Charts</button>
+    <button class="tab-btn" data-tab="profile">Explorer</button>
+  </div>
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <span class="filter-label">Filter 1</span>
+    <select class="filter-select" id="filter1"><option value="all">All</option></select>
+    <span class="filter-label">Filter 2</span>
+    <select class="filter-select" id="filter2"><option value="all">All</option></select>
+    <span class="filter-label">Filter 3</span>
+    <select class="filter-select" id="filter3"><option value="all">All</option></select>
+    <button class="filter-reset" id="resetBtn">Reset</button>
+    <span class="filter-count">Showing <strong id="filterCount">0</strong> records</span>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="tab-panel active" id="tab-home">
+  <div class="home-badge">Vikings Voyage Dashboard</div>
+  <h1 class="home-title">Explore the <span>Voyage</span></h1>
+  <p class="home-sub">A placeholder home page. Title, description, and headline numbers will be filled in once the data is added.</p>
+  <div class="home-stats"><div class="stat-grid" id="homeStats"></div></div>
+  <button class="home-cta" onclick="switchTab('overview')">Get Started &rarr;</button>
+</div>
+
+<!-- OVERVIEW -->
+<div class="tab-panel" id="tab-overview">
+  <div class="stat-grid" id="overviewStats"></div>
+  <div class="chart-row">
+    <div class="card"><h3>Chart slot 1</h3><p class="card-note">Bar or column chart, e.g. totals by category.</p><div id="chart1" style="height:280px"></div></div>
+    <div class="card"><h3>Chart slot 2</h3><p class="card-note">Line chart, e.g. trend over time.</p><div id="chart2" style="height:280px"></div></div>
+  </div>
+  <div class="chart-row">
+    <div class="card"><h3>Chart slot 3</h3><p class="card-note">Pie or donut chart, e.g. share breakdown.</p><div id="chart3" style="height:280px"></div></div>
+    <div class="card"><h3>Chart slot 4</h3><p class="card-note">Map or scatter, depending on the data.</p><div id="chart4" style="height:280px"></div></div>
+  </div>
+</div>
+
+<!-- DIRECTORY -->
+<div class="tab-panel" id="tab-directory">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h3 style="margin:0">Directory</h3>
+      <input class="table-search" id="tableSearch" placeholder="Search...">
+      <span id="tableCount" style="margin-left:auto;font-size:.8rem;color:#6b6785"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table"><thead id="dirHead"></thead><tbody id="dirBody"></tbody></table>
+    </div>
+    <div id="dirEmpty"></div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="tab-panel" id="tab-charts">
+  <div class="card"><h3>Main chart</h3><p class="card-note">A larger, more detailed chart. Axes and chart type to be set once the data is in.</p><div id="chartMain" style="height:420px"></div></div>
+</div>
+
+<!-- EXPLORER -->
+<div class="tab-panel" id="tab-profile">
+  <select class="profile-select" id="profileSelect"><option value="">&mdash; Choose a record to explore &mdash;</option></select>
+  <div id="profileContent"></div>
+</div>
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   DATA: paste records here as an array of objects, e.g.
+   const DATA = [ {"Name": "...", "Category": "...", "Value": 12}, ... ];
+   Column names are read automatically from the first record.
+   ────────────────────────────────────────────────────────────── */
+const DATA = [];
+
+const PLOTLY_LAYOUT = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { family: 'Figtree, sans-serif', color: '#2A1450' }, margin: { t: 10, r: 10, b: 30, l: 40 }, xaxis: { visible: false }, yaxis: { visible: false } };
+const EMPTY_ICON = '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#4F2683" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
+const emptyHTML = msg => `<div class="empty">${EMPTY_ICON}<p>${msg || 'Waiting for data. <strong>Charts will appear here.</strong>'}</p></div>`;
+
+const cols = () => DATA.length ? Object.keys(DATA[0]) : [];
+let filtered = DATA.slice();
+let sortCol = null, sortAsc = true;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  document.getElementById('filterBar').style.display = (name === 'home') ? 'none' : 'flex';
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+function renderStats() {
+  const tiles = [
+    ['Total Records', DATA.length || '–'],
+    ['Stat 2', '–'], ['Stat 3', '–'], ['Stat 4', '–']
+  ].map(([l, v]) => `<div class="stat-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+  document.getElementById('homeStats').innerHTML = tiles;
+  document.getElementById('overviewStats').innerHTML = tiles;
+  document.getElementById('filterCount').textContent = filtered.length;
+}
+
+function renderCharts() {
+  ['chart1', 'chart2', 'chart3', 'chart4', 'chartMain'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!DATA.length) { el.innerHTML = emptyHTML(); return; }
+    /* Real charts get wired up here once the data and columns are known. */
+    Plotly.newPlot(id, [], PLOTLY_LAYOUT, { displayModeBar: false, responsive: true });
+  });
+}
+
+function renderTable() {
+  const head = document.getElementById('dirHead'), body = document.getElementById('dirBody'), empty = document.getElementById('dirEmpty');
+  if (!DATA.length) { head.innerHTML = ''; body.innerHTML = ''; empty.innerHTML = emptyHTML('No records yet. <strong>The table will fill in automatically.</strong>'); document.getElementById('tableCount').textContent = ''; return; }
+  empty.innerHTML = '';
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  let rows = filtered.filter(r => !q || Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)));
+  if (sortCol) rows.sort((a, b) => (a[sortCol] > b[sortCol] ? 1 : -1) * (sortAsc ? 1 : -1));
+  head.innerHTML = '<tr>' + cols().map(c => `<th data-col="${c}">${c} ↕</th>`).join('') + '</tr>';
+  body.innerHTML = rows.map((r, i) => `<tr data-i="${DATA.indexOf(r)}">` + cols().map(c => `<td>${r[c] ?? ''}</td>`).join('') + '</tr>').join('');
+  document.getElementById('tableCount').textContent = rows.length + ' records';
+  head.querySelectorAll('th').forEach(th => th.onclick = () => { sortAsc = (sortCol === th.dataset.col) ? !sortAsc : true; sortCol = th.dataset.col; renderTable(); });
+  body.querySelectorAll('tr').forEach(tr => tr.onclick = () => { document.getElementById('profileSelect').value = tr.dataset.i; renderProfile(); switchTab('profile'); });
+}
+
+function renderProfile() {
+  const sel = document.getElementById('profileSelect'), out = document.getElementById('profileContent');
+  if (!DATA.length) { out.innerHTML = '<div class="card">' + emptyHTML('No records yet. <strong>Profiles will appear here.</strong>') + '</div>'; return; }
+  if (sel.value === '') { out.innerHTML = '<div class="card">' + emptyHTML('Select a record above to view its profile.') + '</div>'; return; }
+  const r = DATA[+sel.value], c = cols();
+  out.innerHTML = `<div class="profile-hero"><h2>${r[c[0]]}</h2></div><div class="profile-body">` + c.slice(1).map(k => `<div class="fact"><div class="k">${k}</div><div class="v">${r[k] ?? '–'}</div></div>`).join('') + '</div>';
+}
+
+function init() {
+  const sel = document.getElementById('profileSelect');
+  DATA.forEach((r, i) => sel.insertAdjacentHTML('beforeend', `<option value="${i}">${r[cols()[0]]}</option>`));
+  sel.onchange = renderProfile;
+  document.getElementById('tableSearch').oninput = renderTable;
+  document.getElementById('resetBtn').onclick = () => { filtered = DATA.slice(); renderAll(); };
+  document.getElementById('exportBtn').onclick = () => {
+    if (!filtered.length) { alert('No data to export yet.'); return; }
+    const c = cols(), esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const csv = [c.map(esc).join(',')].concat(filtered.map(r => c.map(k => esc(r[k])).join(','))).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'vikings-voyage.csv'; a.click();
+  };
+  renderAll();
+}
+function renderAll() { renderStats(); renderCharts(); renderTable(); renderProfile(); }
+init();
+</script>
+</body>
+</html>
